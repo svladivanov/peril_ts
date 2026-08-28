@@ -48,6 +48,7 @@ async function main() {
           console.error('Error publishing message:', err)
         }
         break
+
       case 'resume':
         console.log('Sending resume message')
         try {
@@ -63,6 +64,7 @@ async function main() {
           console.error('Error publishing message:', err)
         }
         break
+
       case 'quit':
         console.log('Exiting... Goodbye!')
         process.exit(0)
