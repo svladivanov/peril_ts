@@ -6,11 +6,12 @@ import {
   printClientHelp,
   printQuit,
 } from '../internal/gamelogic/gamelogic'
-import { declareAndBind, SimpleQueueType } from '../internal/pubsub/consume'
-import { ExchangePerilDirect, PauseKey } from '../internal/routing/routing'
 import { GameState } from '../internal/gamelogic/gamestate'
-import { commandSpawn } from '../internal/gamelogic/spawn'
 import { commandMove } from '../internal/gamelogic/move'
+import { commandSpawn } from '../internal/gamelogic/spawn'
+import { SimpleQueueType, subscribeJSON } from '../internal/pubsub/consume'
+import { ExchangePerilDirect, PauseKey } from '../internal/routing/routing'
+import { handlerPause } from './handlers'
 
 async function main() {
   const rabbitConnString = 'amqp://guest:guest@localhost:5672/'
@@ -32,16 +33,16 @@ async function main() {
   })
 
   const username = await clientWelcome()
+  const gameState = new GameState(username)
 
-  await declareAndBind(
+  await subscribeJSON(
     conn,
     ExchangePerilDirect,
     `${PauseKey}.${username}`,
     PauseKey,
     SimpleQueueType.Transient,
+    handlerPause(gameState),
   )
-
-  const gameState = new GameState(username)
 
   while (true) {
     const words = await getInput()
