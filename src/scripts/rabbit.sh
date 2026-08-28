@@ -1,7 +1,7 @@
 #!/bin/bash
 
-start_or_run () {
-    docker inspect peril_rabbitmq > /dev/null 2>&1
+start_or_run() {
+    docker inspect peril_rabbitmq >/dev/null 2>&1
 
     if [ $? -eq 0 ]; then
         echo "Starting Peril RabbitMQ container..."
@@ -13,18 +13,19 @@ start_or_run () {
 }
 
 case "$1" in
-    start)
-        start_or_run
-        ;;
-    stop)
-        echo "Stopping Peril RabbitMQ container..."
-        docker stop peril_rabbitmq
-        ;;
-    logs)
-        echo "Fetching logs for Peril RabbitMQ container..."
-        docker logs -f peril_rabbitmq
-        ;;
-    *)
-        echo "Usage: $0 {start|stop|logs}"
-        exit 1
+start)
+    start_or_run
+    ;;
+stop)
+    echo "Stopping Peril RabbitMQ container..."
+    docker stop peril_rabbitmq
+    ;;
+logs)
+    echo "Fetching logs for Peril RabbitMQ container..."
+    docker logs -f peril_rabbitmq
+    ;;
+*)
+    echo "Usage: $0 {start|stop|logs}"
+    exit 1
+    ;;
 esac
