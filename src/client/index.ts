@@ -1,4 +1,5 @@
 import amqp from 'amqplib'
+import type { ArmyMove } from '../internal/gamelogic/gamedata'
 import {
   clientWelcome,
   commandStatus,
@@ -10,8 +11,14 @@ import { GameState } from '../internal/gamelogic/gamestate'
 import { commandMove } from '../internal/gamelogic/move'
 import { commandSpawn } from '../internal/gamelogic/spawn'
 import { SimpleQueueType, subscribeJSON } from '../internal/pubsub/consume'
-import { ExchangePerilDirect, PauseKey } from '../internal/routing/routing'
-import { handlerPause } from './handlers'
+import { publishJSON } from '../internal/pubsub/publish'
+import {
+  ArmyMovesPrefix,
+  ExchangePerilDirect,
+  ExchangePerilTopic,
+  PauseKey,
+} from '../internal/routing/routing'
+import { handlerMove, handlerPause } from './handlers'
 
 async function main() {
   const rabbitConnString = 'amqp://guest:guest@localhost:5672/'
@@ -34,6 +41,7 @@ async function main() {
 
   const username = await clientWelcome()
   const gameState = new GameState(username)
+  const publishCh = await conn.createConfirmChannel()
 
   await subscribeJSON(
     conn,
@@ -42,6 +50,15 @@ async function main() {
     PauseKey,
     SimpleQueueType.Transient,
     handlerPause(gameState),
+  )
+
+  await subscribeJSON(
+    conn,
+    ExchangePerilTopic,
+    `${ArmyMovesPrefix}.${username}`,
+    `${ArmyMovesPrefix}.*`,
+    SimpleQueueType.Transient,
+    handlerMove(gameState),
   )
 
   while (true) {
@@ -61,7 +78,13 @@ async function main() {
         }
       case 'move':
         try {
-          commandMove(gameState, words)
+          const move = commandMove(gameState, words)
+          await publishJSON<ArmyMove>(
+            publishCh,
+            ExchangePerilTopic,
+            `${ArmyMovesPrefix}.${username}`,
+            move,
+          )
           break
         } catch (err) {
           console.error('Could not complete command: ', err)
