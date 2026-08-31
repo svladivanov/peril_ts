@@ -5,6 +5,12 @@ export enum SimpleQueueType {
   Transient,
 }
 
+export enum AckType {
+  Ack,
+  NackRequeue,
+  NackDiscard,
+}
+
 export const declareAndBind = async (
   conn: ChannelModel,
   exchange: string,
@@ -31,7 +37,7 @@ export const subscribeJSON = async <T>(
   queueName: string,
   key: string,
   queueType: SimpleQueueType,
-  handler: (data: T) => void,
+  handler: (data: T) => AckType,
 ): Promise<void> => {
   const [ch, queue] = await declareAndBind(
     conn,
@@ -52,7 +58,31 @@ export const subscribeJSON = async <T>(
       return
     }
 
-    handler(data)
-    ch.ack(msg)
+    try {
+      const result = handler(data)
+      switch (result) {
+        case AckType.Ack:
+          ch.ack(msg)
+          console.log('Ack')
+          break
+        case AckType.NackDiscard:
+          ch.nack(msg, false, false)
+          console.log('NackDiscard')
+          break
+        case AckType.NackRequeue:
+          ch.nack(msg, false, true)
+          console.log('NackRequeue')
+          break
+        default: {
+          const unreachable: never = result
+          console.error('Unexpected ack type: ', unreachable)
+          return
+        }
+      }
+    } catch (err) {
+      console.error('Error handling message: ', err)
+      ch.nack(msg, false, false)
+      return
+    }
   })
 }
